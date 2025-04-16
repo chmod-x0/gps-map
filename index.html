@@ -16,15 +16,18 @@
 <body>
 <div id="map"></div>
 <script>
+  // Mapbox access token
   mapboxgl.accessToken = 'pk.eyJ1IjoiZ2VuZXJpY3VzZXJuYW1lNCIsImEiOiJjbTlqNm5yb3IwOWNjMm1wcnMwNHk3Mml0In0.UVsxJ67_h3AusZw_bfcSKg';
 
+  // Create the map using your custom style
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/genericusername4/cm9j9bpiz001y01qt2mz81kuo',
-    center: [-97.7431, 30.2672],
+    style: 'mapbox://styles/genericusername4/cm9j9bpiz001y01qt2mz81kuo', // your Mapbox Studio style
+    center: [-97.7431, 30.2672], // fallback center
     zoom: 12
   });
 
+  // Add directions plugin with live traffic
   const directions = new MapboxDirections({
     accessToken: mapboxgl.accessToken,
     unit: 'imperial',
@@ -36,7 +39,7 @@
   map.addControl(directions, 'top-left');
   map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-  // Speak a given string using Web Speech API
+  // Speak directions using Web Speech API
   function speak(text) {
     if ('speechSynthesis' in window) {
       const msg = new SpeechSynthesisUtterance(text);
@@ -46,7 +49,7 @@
     }
   }
 
-  // Auto-locate user and set origin
+  // Get user's current location and set as origin
   navigator.geolocation.getCurrentPosition(pos => {
     const lng = pos.coords.longitude;
     const lat = pos.coords.latitude;
@@ -56,7 +59,7 @@
     alert("Location access failed: " + err.message);
   });
 
-  // When route updates, speak each step
+  // When a route is created, read out the directions
   directions.on('route', e => {
     const steps = e.route[0].legs[0].steps;
     let delay = 0;
