@@ -1,60 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>City & County Display</title>
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta charset="utf-8" />
+  <title>GPS Routing with Voice</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.16.1/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.16.1/mapbox-gl.css" rel="stylesheet" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.1/mapbox-gl-directions.css" rel="stylesheet" />
   <style>
-    body { margin: 0; padding: 0; }
+    body { margin: 0; padding: 0; font-family: sans-serif; }
     #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-    #locationInfo {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-family: sans-serif;
-      font-size: 14px;
-      z-index: 1;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
   </style>
 </head>
 <body>
-<div id="locationInfo">Locating...</div>
 <div id="map"></div>
 <script>
   mapboxgl.accessToken = 'pk.eyJ1IjoiZ2VuZXJpY3VzZXJuYW1lNCIsImEiOiJjbTlqNm5yb3IwOWNjMm1wcnMwNHk3Mml0In0.UVsxJ67_h3AusZw_bfcSKg';
 
   const map = new mapboxgl.Map({
     container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
+    style: 'mapbox://styles/genericusername4/cm9j9bpiz001y01qt2mz81kuo',
     center: [-97.7431, 30.2672],
     zoom: 12
   });
 
-  function reverseGeocode(lng, lat) {
-    fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`)
-      .then(res => res.json())
-      .then(data => {
-        const context = data.features[0].context || [];
-        const city = context.find(c => c.id.includes("place"))?.text || "Unknown city";
-        const county = context.find(c => c.id.includes("district") || c.id.includes("region"))?.text || "Unknown county";
-        document.getElementById("locationInfo").innerText = `${city}, ${county}`;
-      })
-      .catch(() => {
-        document.getElementById("locationInfo").innerText = "Unable to locate city/county.";
-      });
+  const directions = new MapboxDirections({
+    accessToken: mapboxgl.accessToken,
+    unit: 'imperial',
+    profile: 'mapbox/driving-traffic',
+    controls: { instructions: true },
+    flyTo: true
+  });
+
+  map.addControl(directions, 'top-left');
+  map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+  // Speak a given string using Web Speech API
+  function speak(text) {
+    if ('speechSynthesis' in window) {
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.rate = 1;
+      msg.pitch = 1;
+      speechSynthesis.speak(msg);
+    }
   }
 
+  // Auto-locate user and set origin
   navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    map.setCenter([longitude, latitude]);
-    reverseGeocode(longitude, latitude);
-  }, () => {
-    document.getElementById("locationInfo").innerText = "Geolocation failed.";
+    const lng = pos.coords.longitude;
+    const lat = pos.coords.latitude;
+    map.setCenter([lng, lat]);
+    directions.setOrigin([lng, lat]);
+  }, err => {
+    alert("Location access failed: " + err.message);
+  });
+
+  // When route updates, speak each step
+  directions.on('route', e => {
+    const steps = e.route[0].legs[0].steps;
+    let delay = 0;
+    steps.forEach(step => {
+      const text = step.maneuver.instruction;
+      setTimeout(() => speak(text), delay);
+      delay += 4000;
+    });
   });
 </script>
 </body>
